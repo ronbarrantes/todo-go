@@ -16,15 +16,14 @@ func fib(n int, c map[int]int) int {
 		return 1
 	}
 
-	if c[n] <= 0 {
-		return c[n]
+	if val, exists := c[n]; exists && val > 0 {
+		return val
 	}
 
 	num := fib(n-1, c) + fib(n-2, c)
-
 	c[n] = num
 
-	return c[n]
+	return num
 }
 
 func main() {
