@@ -7,23 +7,27 @@ import (
 	"time"
 )
 
-func fib(n int, c map[int]int) int {
-	if n <= 0 {
+func fib(n int) int {
+	cache := make(map[int]int)
+
+	cache[0] = 0
+	cache[1] = 1
+
+	return fibHelper(n, cache)
+}
+
+func fibHelper(n int, c map[int]int) int {
+	if n < 0 {
 		return 0
 	}
 
-	if n <= 1 {
-		return 1
-	}
-
-	if val, exists := c[n]; exists && val > 0 {
+	if val, exists := c[n]; exists {
 		return val
 	}
 
-	num := fib(n-1, c) + fib(n-2, c)
-	c[n] = num
+	c[n] = fibHelper(n-1, c) + fibHelper(n-2, c)
 
-	return num
+	return c[n]
 }
 
 func main() {
@@ -37,12 +41,10 @@ func main() {
 
 	s := time.Now()
 
-	cache := make(map[int]int)
-
 	defer func() {
 		duration := time.Since(s)
 		fmt.Printf("This program took %v to complete\n", duration)
 	}()
 
-	fmt.Printf("fib of %d is %d\n", num, fib(num, cache))
+	fmt.Printf("fib of %d is %d\n", num, fib(num))
 }
