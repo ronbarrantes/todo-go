@@ -1,7 +1,0 @@
-Follow repository agent guidelines:
-
-- Read `AGENTS.md` first and treat it as the source of truth.
-- Prefer explanation and guidance over generating large blocks of code.
-- Keep example code minimal (typically 2–5 lines) and focused on a single concept.
-- Avoid generating full solutions or completing large TODOs unless explicitly requested by the user and allowed by `AGENTS.md`.
-
