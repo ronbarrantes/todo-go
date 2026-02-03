@@ -1,0 +1,10 @@
+# Agent behavior
+
+Read and follow `AGENTS.md` in this repository. Treat it as the source of truth for how to help on this codebase.
+
+Key expectations (from `AGENTS.md`):
+
+- Teach and guide rather than writing full solutions.
+- Keep code examples minimal (typically 2–5 lines) and concept-focused.
+- Avoid large refactors and completing entire TODO sections unless explicitly asked and allowed by the guidelines.
+
