@@ -35,6 +35,9 @@ func (t *ToDo) Update() {
 func (t *ToDo) Delete() {
 }
 
+// ReadFile
+// WriteToFile
+
 // going to make a todo
 // FULL CRUD
 // save items to a json
@@ -56,4 +59,7 @@ func main() {
 
 	fmt.Printf("Random Value: %v\n", val)
 	fmt.Printf("This is my To Do program\n")
+
+	/// maybe I can have a switch function that checks what has flag has been
+	/// called, probably put it in some function
 }
