@@ -37,7 +37,6 @@ func (t *ToDo) Delete() {
 
 // ReadFile
 // WriteToFile
-
 // going to make a todo
 // FULL CRUD
 // save items to a json
