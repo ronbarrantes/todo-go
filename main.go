@@ -41,15 +41,21 @@ type ToDo struct {
 }
 
 func writeJSON() {
-	data := []byte("hello\ngo\n")
+	data := []byte("hello\ngo\nA new line\n")
 	path := getUserPath()
-	err := os.WriteFile(path, data, 0644)
+	f, err := os.Create(path)
 	check(err)
+	defer f.Close()
 
-	// defer f.close()
+	f.Write(data)
 }
 
 func readJSON() {
+	path := getUserPath()
+	data, err := os.ReadFile(path)
+	check(err)
+
+	fmt.Printf("DATA: \n%s", data)
 }
 
 func (t *ToDo) Create() {
@@ -57,6 +63,7 @@ func (t *ToDo) Create() {
 }
 
 func (t *ToDo) Read() {
+	readJSON()
 }
 
 func (t *ToDo) Update() {
@@ -85,6 +92,8 @@ func main() {
 	}()
 
 	writeJSON()
+
+	readJSON()
 
 	val := generateId()
 
