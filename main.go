@@ -4,8 +4,17 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
+	"os"
+	"os/user"
+	"path/filepath"
 	"time"
 )
+
+func getUserPath() string {
+	currentUser, err := user.Current()
+	check(err)
+	return filepath.Join(currentUser.HomeDir, "Documents", "todo-go")
+}
 
 func generateId() string {
 	var id [3]byte
@@ -16,6 +25,14 @@ func generateId() string {
 	return fmt.Sprintf("%x", id)
 }
 
+// check errors
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
 type ToDo struct {
 	ID         string
 	Text       string
@@ -23,7 +40,20 @@ type ToDo struct {
 	Date       time.Time
 }
 
+func writeJSON() {
+	data := []byte("hello\ngo\n")
+	path := getUserPath()
+	err := os.WriteFile(path, data, 0644)
+	check(err)
+
+	// defer f.close()
+}
+
+func readJSON() {
+}
+
 func (t *ToDo) Create() {
+	writeJSON()
 }
 
 func (t *ToDo) Read() {
@@ -53,6 +83,8 @@ func main() {
 		duration := time.Since(s)
 		fmt.Printf("This program took %v to complete\n", duration)
 	}()
+
+	writeJSON()
 
 	val := generateId()
 
