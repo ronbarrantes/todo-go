@@ -2,6 +2,8 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -34,50 +36,61 @@ func check(e error) {
 }
 
 type ToDo struct {
-	ID         string
-	Text       string
-	IsComplete bool
-	Date       time.Time
+	ID         string    `json:"id"`
+	Text       string    `json:"text"`
+	IsComplete bool      `json:"is_complete"`
+	Date       time.Time `json:"date"`
 }
 
-func writeJSON() {
-	data := []byte("hello\ngo\nA new line\n")
-	path := getUserPath()
-	f, err := os.Create(path)
-	check(err)
-	defer f.Close()
-
-	f.Write(data)
+func init() {
 }
 
-func readJSON() {
+func writeJSON(t []*ToDo) error {
+	jsonBlob, err := json.MarshalIndent(t, "", " ")
+	if err != nil {
+		return err
+	}
+
 	path := getUserPath()
+	return os.WriteFile(path, jsonBlob, 0644)
+}
+
+func readJSON() ([]*ToDo, error) {
+	path := getUserPath()
+	jsonBlob := []*ToDo{}
 	data, err := os.ReadFile(path)
-	check(err)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return jsonBlob, nil
+		}
 
-	fmt.Printf("DATA: \n%s", data)
+		return nil, err
+	}
+
+	if err = json.Unmarshal(data, &jsonBlob); err != nil {
+		return nil, err
+	}
+
+	return jsonBlob, nil
 }
 
 func (t *ToDo) Create() {
-	writeJSON()
+	sl := []*ToDo{}
+	sl = append(sl, t)
+	writeJSON(sl)
 }
 
 func (t *ToDo) Read() {
 	readJSON()
 }
 
-func (t *ToDo) Update() {
+func (t *ToDo) Update(id string) {
 }
 
 func (t *ToDo) Delete() {
 }
 
-// ReadFile
-// WriteToFile
-// going to make a todo
 // FULL CRUD
-// save items to a json
-// do it via cli with flags
 // -a : --add
 // -d : --done
 // -l : --list
@@ -91,11 +104,18 @@ func main() {
 		fmt.Printf("This program took %v to complete\n", duration)
 	}()
 
-	writeJSON()
-
-	readJSON()
-
 	val := generateId()
+
+	item := &ToDo{
+		ID:         val,
+		Date:       s,
+		Text:       fmt.Sprintf("New item %s", val),
+		IsComplete: false,
+	}
+
+	item.Create()
+
+	item.Read()
 
 	fmt.Printf("Random Value: %v\n", val)
 	fmt.Printf("This is my To Do program\n")
