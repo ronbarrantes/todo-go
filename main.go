@@ -15,7 +15,7 @@ import (
 type ToDo struct {
 	ID          string    `json:"id"`
 	Text        string    `json:"text"`
-	IsCompleted bool      `json:"is_completed"`
+	IsCompleted *bool     `json:"is_completed"`
 	Date        time.Time `json:"date"`
 }
 
@@ -42,7 +42,7 @@ func generateId() string {
 
 func printToDo(t *ToDo) {
 	var completed string = " "
-	if t.IsCompleted {
+	if *t.IsCompleted {
 		completed = "x"
 	}
 	fmt.Printf("- [%s] id: %s | item %s\n", completed, t.ID, t.Text)
@@ -88,11 +88,12 @@ func (t *ToDo) Create() error {
 
 	val := generateId()
 
+	completed := false
 	item := &ToDo{
 		ID:          val,
 		Date:        time.Now(),
 		Text:        fmt.Sprintf("New item %s", val),
-		IsCompleted: false,
+		IsCompleted: &completed,
 	}
 
 	updatedData := append(jData, item)
@@ -132,19 +133,19 @@ func (t *ToDo) Update() error {
 	}
 
 	found := false
-	for i, todo := range jData {
-		if todo.ID == t.ID {
-			if todo.Text != t.Text {
-				todo.Text = t.Text
+	for i, jToDo := range jData {
+		if jToDo.ID == t.ID {
+			if t.Text != "" {
+				jToDo.Text = t.Text
 			}
 
-			if todo.IsCompleted != t.IsCompleted {
-				todo.IsCompleted = t.IsCompleted
+			if t.IsCompleted != nil {
+				jToDo.IsCompleted = t.IsCompleted
 			}
 
-			fmt.Printf("Updated %v", todo)
+			fmt.Printf("Updated %v", jToDo)
 			found = true
-			jData[i] = todo
+			jData[i] = jToDo
 			break
 		}
 	}
@@ -161,6 +162,21 @@ func (t *ToDo) Update() error {
 	return nil
 }
 
+func (t *ToDo) ToggleTodo() error {
+	var isCompleted bool
+
+	if t.IsCompleted != nil {
+		isCompleted = !t.IsCompleted
+	}
+
+	todo := ToDo{
+		ID:          t.ID,
+		IsCompleted: &isCompleted,
+	}
+
+	return todo.Update()
+}
+
 func (t *ToDo) Delete() {
 	// read
 
@@ -175,7 +191,7 @@ func main() {
 	s := time.Now()
 	item := &ToDo{
 		ID:   "dce04d",
-		Text: "More text",
+		Text: "CDEF",
 	}
 
 	defer func() {
@@ -189,7 +205,7 @@ func main() {
 	// -l : --list
 	// -d: --delete
 
-	item.Update()
+	item.ToggleTodo()
 
 	//	fmt.Printf("Random Value: %v\n", val)
 
