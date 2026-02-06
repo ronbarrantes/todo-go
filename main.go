@@ -12,6 +12,19 @@ import (
 	"time"
 )
 
+type ToDo struct {
+	ID          string    `json:"id"`
+	Text        string    `json:"text"`
+	IsCompleted bool      `json:"is_completed"`
+	Date        time.Time `json:"date"`
+}
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
 func getUserPath() string {
 	currentUser, err := user.Current()
 	check(err)
@@ -27,19 +40,12 @@ func generateId() string {
 	return fmt.Sprintf("%x", id)
 }
 
-// check errors
-
-func check(e error) {
-	if e != nil {
-		panic(e)
+func printToDo(t *ToDo) {
+	var completed string = " "
+	if t.IsCompleted {
+		completed = "x"
 	}
-}
-
-type ToDo struct {
-	ID         string    `json:"id"`
-	Text       string    `json:"text"`
-	IsComplete bool      `json:"is_complete"`
-	Date       time.Time `json:"date"`
+	fmt.Printf("- [%s] id: %s | item %s\n", completed, t.ID, t.Text)
 }
 
 func init() {
@@ -57,21 +63,21 @@ func writeJSON(t []*ToDo) error {
 
 func readJSON() ([]*ToDo, error) {
 	path := getUserPath()
-	jData := []*ToDo{}
+	todos := []*ToDo{}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return jData, nil
+			return todos, nil
 		}
 
 		return nil, err
 	}
 
-	if err = json.Unmarshal(data, &jData); err != nil {
+	if err = json.Unmarshal(data, &todos); err != nil {
 		return nil, err
 	}
 
-	return jData, nil
+	return todos, nil
 }
 
 func (t *ToDo) Create() error {
@@ -80,14 +86,38 @@ func (t *ToDo) Create() error {
 		return err
 	}
 
-	updatedData := append(jData, t)
+	val := generateId()
 
-	fmt.Printf("id: %s | item %s", t.ID, t.Text)
+	item := &ToDo{
+		ID:          val,
+		Date:        time.Now(),
+		Text:        fmt.Sprintf("New item %s", val),
+		IsCompleted: false,
+	}
+
+	updatedData := append(jData, item)
+
+	fmt.Printf("id: %s | item %s\n", item.ID, item.Text)
 	return writeJSON(updatedData)
 }
 
-func (t *ToDo) Read() {
-	readJSON()
+func (t *ToDo) Read() error {
+	jData, err := readJSON()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%v", t)
+
+	if len(jData) == 0 {
+		fmt.Println("Nothing to do!")
+	}
+
+	for _, todo := range jData {
+		printToDo(todo)
+	}
+
+	return nil
 }
 
 func (t *ToDo) Update() {
@@ -110,32 +140,22 @@ func (t *ToDo) Delete() {
 	// write
 }
 
-// FULL CRUD
-// -a : --add
-// -d : --done
-// -l : --list
-// -d: --delete
-
 func main() {
 	s := time.Now()
+	item := &ToDo{}
 
 	defer func() {
 		duration := time.Since(s)
-		fmt.Printf("This program took %v to complete\n", duration)
+		fmt.Printf("\nThis program took %v to run\n", duration)
 	}()
 
-	val := generateId()
+	// FULL CRUD
+	// -a : --add
+	// -d : --done
+	// -l : --list
+	// -d: --delete
 
-	item := &ToDo{
-		ID:         val,
-		Date:       s,
-		Text:       fmt.Sprintf("New item %s", val),
-		IsComplete: false,
-	}
-
-	item.Create()
-
-	//	item.Read()
+	item.Read()
 
 	//	fmt.Printf("Random Value: %v\n", val)
 
