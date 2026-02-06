@@ -101,13 +101,13 @@ func (t *ToDo) Create() error {
 	return writeJSON(updatedData)
 }
 
+// func (t *ToDo) Read
+
 func (t *ToDo) Read() error {
 	jData, err := readJSON()
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("%v", t)
 
 	if len(jData) == 0 {
 		fmt.Println("Nothing to do!")
@@ -120,14 +120,45 @@ func (t *ToDo) Read() error {
 	return nil
 }
 
-func (t *ToDo) Update() {
-	// read
+func (t *ToDo) Update() error {
+	jData, err := readJSON()
+	if err != nil {
+		return err
+	}
 
-	// find
+	if len(jData) == 0 {
+		fmt.Println("Nothing to do!")
+		return nil
+	}
 
-	// update
+	found := false
+	for i, todo := range jData {
+		if todo.ID == t.ID {
+			if todo.Text != t.Text {
+				todo.Text = t.Text
+			}
 
-	// write
+			if todo.IsCompleted != t.IsCompleted {
+				todo.IsCompleted = t.IsCompleted
+			}
+
+			fmt.Printf("Updated %v", todo)
+			found = true
+			jData[i] = todo
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("To do %s not found", t.ID)
+	}
+
+	err = writeJSON(jData)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (t *ToDo) Delete() {
@@ -142,7 +173,10 @@ func (t *ToDo) Delete() {
 
 func main() {
 	s := time.Now()
-	item := &ToDo{}
+	item := &ToDo{
+		ID:   "dce04d",
+		Text: "More text",
+	}
 
 	defer func() {
 		duration := time.Since(s)
@@ -155,7 +189,7 @@ func main() {
 	// -l : --list
 	// -d: --delete
 
-	item.Read()
+	item.Update()
 
 	//	fmt.Printf("Random Value: %v\n", val)
 
