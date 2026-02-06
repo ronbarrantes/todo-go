@@ -57,37 +57,57 @@ func writeJSON(t []*ToDo) error {
 
 func readJSON() ([]*ToDo, error) {
 	path := getUserPath()
-	jsonBlob := []*ToDo{}
+	jData := []*ToDo{}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return jsonBlob, nil
+			return jData, nil
 		}
 
 		return nil, err
 	}
 
-	if err = json.Unmarshal(data, &jsonBlob); err != nil {
+	if err = json.Unmarshal(data, &jData); err != nil {
 		return nil, err
 	}
 
-	return jsonBlob, nil
+	return jData, nil
 }
 
-func (t *ToDo) Create() {
-	sl := []*ToDo{}
-	sl = append(sl, t)
-	writeJSON(sl)
+func (t *ToDo) Create() error {
+	jData, err := readJSON()
+	if err != nil {
+		return err
+	}
+
+	updatedData := append(jData, t)
+
+	fmt.Printf("id: %s | item %s", t.ID, t.Text)
+	return writeJSON(updatedData)
 }
 
 func (t *ToDo) Read() {
 	readJSON()
 }
 
-func (t *ToDo) Update(id string) {
+func (t *ToDo) Update() {
+	// read
+
+	// find
+
+	// update
+
+	// write
 }
 
 func (t *ToDo) Delete() {
+	// read
+
+	// find
+
+	// remove
+
+	// write
 }
 
 // FULL CRUD
@@ -115,10 +135,9 @@ func main() {
 
 	item.Create()
 
-	item.Read()
+	//	item.Read()
 
-	fmt.Printf("Random Value: %v\n", val)
-	fmt.Printf("This is my To Do program\n")
+	//	fmt.Printf("Random Value: %v\n", val)
 
 	/// maybe I can have a switch function that checks what has flag has been
 	/// called, probably put it in some function
