@@ -41,7 +41,7 @@ func generateId() string {
 }
 
 func printToDo(t *ToDo) {
-	var completed string = " "
+	completed := " "
 	if *t.IsCompleted {
 		completed = "x"
 	}
@@ -111,7 +111,7 @@ func (t *ToDo) Read() error {
 	}
 
 	if len(jData) == 0 {
-		fmt.Println("Nothing to do!")
+		fmt.Println("nothing to do!")
 	}
 
 	for _, todo := range jData {
@@ -121,29 +121,40 @@ func (t *ToDo) Read() error {
 	return nil
 }
 
-func (t *ToDo) Update() error {
+func (t *ToDo) Update(toggle bool) error {
 	jData, err := readJSON()
 	if err != nil {
 		return err
 	}
 
 	if len(jData) == 0 {
-		fmt.Println("Nothing to do!")
+		fmt.Println("nothing to do!")
 		return nil
 	}
 
 	found := false
 	for i, jToDo := range jData {
 		if jToDo.ID == t.ID {
-			if t.Text != "" {
+			if t.Text != "" && !toggle {
 				jToDo.Text = t.Text
 			}
 
-			if t.IsCompleted != nil {
+			if t.IsCompleted != nil && !toggle {
 				jToDo.IsCompleted = t.IsCompleted
 			}
 
-			fmt.Printf("Updated %v", jToDo)
+			if toggle {
+				completed := true
+				notCompleted := false
+
+				if t.IsCompleted != nil || !*t.IsCompleted {
+					jToDo.IsCompleted = &completed
+				} else {
+					jToDo.IsCompleted = &notCompleted
+				}
+
+			}
+
 			found = true
 			jData[i] = jToDo
 			break
@@ -151,7 +162,7 @@ func (t *ToDo) Update() error {
 	}
 
 	if !found {
-		return fmt.Errorf("To do %s not found", t.ID)
+		return fmt.Errorf("to do %s not found", t.ID)
 	}
 
 	err = writeJSON(jData)
@@ -163,18 +174,7 @@ func (t *ToDo) Update() error {
 }
 
 func (t *ToDo) ToggleTodo() error {
-	var isCompleted bool
-
-	if t.IsCompleted != nil {
-		isCompleted = !*t.IsCompleted
-	}
-
-	todo := ToDo{
-		ID:          t.ID,
-		IsCompleted: &isCompleted,
-	}
-
-	return todo.Update()
+	return t.Update(true)
 }
 
 func (t *ToDo) Delete() {
@@ -205,7 +205,10 @@ func main() {
 	// -l : --list
 	// -d: --delete
 
-	item.ToggleTodo()
+	err := item.Create()
+	if err != nil {
+		fmt.Printf("error: %s", err)
+	}
 
 	//	fmt.Printf("Random Value: %v\n", val)
 
