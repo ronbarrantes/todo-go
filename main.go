@@ -166,7 +166,7 @@ func (t *ToDo) ToggleTodo() error {
 	var isCompleted bool
 
 	if t.IsCompleted != nil {
-		isCompleted = !t.IsCompleted
+		isCompleted = !*t.IsCompleted
 	}
 
 	todo := ToDo{
