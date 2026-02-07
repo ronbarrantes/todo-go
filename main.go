@@ -235,16 +235,42 @@ func main() {
 	// -d: --delete
 
 	createFlag := flag.String("c", "", "Create a to do")
-	readFlag := flag.String("r", "", "Read all to todos")
-	findFlag := flag.String("f", "", "Find a to todo")
-	updateFlag := flag.String("u", "", "Update a to do")
+	readFlag := flag.Bool("r", false, "Read all to todos")
+	// findFlag := flag.String("f", "", "Find a to todo")
+	// updateFlag := flag.String("u", "", "Update a to do")
 	helpFlag := flag.Bool("h", false, "Show help")
 
 	flag.Parse()
 
+	// fmt.Printf("the help flag %v\n", *helpFlag)
+
 	if *helpFlag {
 		flag.Usage()
 		os.Exit(0)
+	}
+	todo := ToDo{}
+
+	if len(os.Args) == 1 {
+		fmt.Println("Listing todos by default...")
+		return
+	}
+
+	switch {
+	case *readFlag:
+		fmt.Println("Reading ....")
+
+	case *createFlag != "":
+		fmt.Printf("the flag is %s\n", *createFlag)
+		todo.Text = *createFlag
+		err := todo.Create()
+		if err != nil {
+			fmt.Printf("error: %v", err)
+		}
+
+	default:
+		fmt.Println("Unknown flag or no action")
+		flag.Usage()
+		os.Exit(1)
 	}
 
 	//	fmt.Printf("Random Value: %v\n", val)
