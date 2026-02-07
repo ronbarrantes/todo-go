@@ -121,7 +121,52 @@ func (t *ToDo) Read() error {
 	return nil
 }
 
-func (t *ToDo) Update(toggle bool) error {
+func readAndWrite(fn func([]*ToDo) ([]*ToDo, error)) error {
+	jData, err := readJSON()
+	if err != nil {
+		return err
+	}
+
+	if len(jData) == 0 {
+		fmt.Println("nothing to do!")
+		return nil
+	}
+
+	toReadAndWrite, err := fn(jData)
+	if err != nil {
+		return err
+	}
+
+	err = writeJSON(toReadAndWrite)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *ToDo) Update() error {
+	return readAndWrite(func(td []*ToDo) ([]*ToDo, error) {
+		for i, jToDo := range td {
+			if jToDo.ID == t.ID {
+				if t.Text == "" {
+					jToDo.Text = t.Text
+				}
+
+				if t.IsCompleted != nil {
+					jToDo.IsCompleted = t.IsCompleted
+				}
+
+				td[i] = jToDo
+				return td, nil
+			}
+		}
+
+		return nil, fmt.Errorf("to do %s not found", t.ID)
+	})
+}
+
+func (t *ToDo) ToggleTodo() error {
 	jData, err := readJSON()
 	if err != nil {
 		return err
@@ -135,24 +180,12 @@ func (t *ToDo) Update(toggle bool) error {
 	found := false
 	for i, jToDo := range jData {
 		if jToDo.ID == t.ID {
-			if t.Text != "" && !toggle {
-				jToDo.Text = t.Text
-			}
-
-			if t.IsCompleted != nil && !toggle {
-				jToDo.IsCompleted = t.IsCompleted
-			}
-
-			if toggle {
-				completed := true
-				notCompleted := false
-
-				if t.IsCompleted != nil || !*t.IsCompleted {
-					jToDo.IsCompleted = &completed
-				} else {
-					jToDo.IsCompleted = &notCompleted
-				}
-
+			completed := true
+			notCompleted := false
+			if t.IsCompleted != nil || !*jToDo.IsCompleted {
+				jToDo.IsCompleted = &completed
+			} else {
+				jToDo.IsCompleted = &notCompleted
 			}
 
 			found = true
@@ -173,8 +206,10 @@ func (t *ToDo) Update(toggle bool) error {
 	return nil
 }
 
-func (t *ToDo) ToggleTodo() error {
-	return t.Update(true)
+func (t *ToDo) SetComplete() error {
+	completed := true
+	t.IsCompleted = &completed
+	return t.Update()
 }
 
 func (t *ToDo) Delete() {
@@ -190,8 +225,8 @@ func (t *ToDo) Delete() {
 func main() {
 	s := time.Now()
 	item := &ToDo{
-		ID:   "dce04d",
-		Text: "CDEF",
+		ID:   "baef51",
+		Text: "Get cleaning sheets",
 	}
 
 	defer func() {
@@ -205,7 +240,7 @@ func main() {
 	// -l : --list
 	// -d: --delete
 
-	err := item.Create()
+	err := item.Update()
 	if err != nil {
 		fmt.Printf("error: %s", err)
 	}
