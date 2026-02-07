@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"time"
 )
 
@@ -123,8 +124,6 @@ func (t *ToDo) Create() error {
 	})
 }
 
-// func (t *ToDo) Read
-
 func (t *ToDo) Read() error {
 	jData, err := readJSON()
 	if err != nil {
@@ -208,14 +207,16 @@ func (t *ToDo) SetComplete() error {
 	return t.Update()
 }
 
-func (t *ToDo) Delete() {
-	// read
+func (t *ToDo) Delete() error {
+	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
+		for i, todo := range td {
+			if todo.ID == t.ID {
+				return slices.Delete(td, i, i+1), nil
+			}
+		}
 
-	// find
-
-	// remove
-
-	// write
+		return nil, fmt.Errorf("to do with id %s not found", t.ID)
+	})
 }
 
 func main() {
@@ -237,7 +238,7 @@ func main() {
 	// -l : --list
 	// -d: --delete
 
-	err := item.Update()
+	err := item.Delete()
 	if err != nil {
 		fmt.Printf("error: %s", err)
 	}
