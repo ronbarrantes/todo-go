@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -216,11 +217,11 @@ func (t *ToDo) Delete() error {
 
 func main() {
 	s := time.Now()
-	completed := false
-	item := &ToDo{
-		ID:          "baef51",
-		IsCompleted: &completed,
-	}
+	// completed := false
+	// item := &ToDo{
+	// 	ID:          "baef51",
+	// 	IsCompleted: &completed,
+	// }
 
 	defer func() {
 		duration := time.Since(s)
@@ -233,9 +234,17 @@ func main() {
 	// -l : --list
 	// -d: --delete
 
-	err := item.Delete()
-	if err != nil {
-		fmt.Printf("error: %s", err)
+	createFlag := flag.String("c", "", "Create a to do")
+	readFlag := flag.String("r", "", "Read all to todos")
+	findFlag := flag.String("f", "", "Find a to todo")
+	updateFlag := flag.String("u", "", "Update a to do")
+	helpFlag := flag.Bool("h", false, "Show help")
+
+	flag.Parse()
+
+	if *helpFlag {
+		flag.Usage()
+		os.Exit(0)
 	}
 
 	//	fmt.Printf("Random Value: %v\n", val)
