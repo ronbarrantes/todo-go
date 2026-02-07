@@ -80,6 +80,10 @@ func readJSON() ([]*ToDo, error) {
 		return nil, err
 	}
 
+	if len(data) == 0 {
+		return todos, nil
+	}
+
 	if err = json.Unmarshal(data, &todos); err != nil {
 		return nil, err
 	}
