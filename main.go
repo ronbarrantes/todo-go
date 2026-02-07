@@ -48,8 +48,8 @@ func printToDo(t *ToDo) {
 	fmt.Printf("- [%s] id: %s | item %s\n", completed, t.ID, t.Text)
 }
 
-func init() {
-}
+// func init() {
+// }
 
 func writeJSON(t []*ToDo) error {
 	jsonBlob, err := json.MarshalIndent(t, "", " ")
@@ -80,48 +80,7 @@ func readJSON() ([]*ToDo, error) {
 	return todos, nil
 }
 
-func (t *ToDo) Create() error {
-	jData, err := readJSON()
-	if err != nil {
-		return err
-	}
-
-	val := generateId()
-
-	completed := false
-	item := &ToDo{
-		ID:          val,
-		Date:        time.Now(),
-		Text:        fmt.Sprintf("New item %s", val),
-		IsCompleted: &completed,
-	}
-
-	updatedData := append(jData, item)
-
-	fmt.Printf("id: %s | item %s\n", item.ID, item.Text)
-	return writeJSON(updatedData)
-}
-
-// func (t *ToDo) Read
-
-func (t *ToDo) Read() error {
-	jData, err := readJSON()
-	if err != nil {
-		return err
-	}
-
-	if len(jData) == 0 {
-		fmt.Println("nothing to do!")
-	}
-
-	for _, todo := range jData {
-		printToDo(todo)
-	}
-
-	return nil
-}
-
-func readAndWrite(fn func([]*ToDo) ([]*ToDo, error)) error {
+func updateStore(fn func([]*ToDo) ([]*ToDo, error)) error {
 	jData, err := readJSON()
 	if err != nil {
 		return err
@@ -145,11 +104,49 @@ func readAndWrite(fn func([]*ToDo) ([]*ToDo, error)) error {
 	return nil
 }
 
+func (t *ToDo) Create() error {
+	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
+		val := generateId()
+
+		completed := false
+		item := &ToDo{
+			ID:          val,
+			Date:        time.Now(),
+			Text:        t.Text,
+			IsCompleted: &completed,
+		}
+
+		td = append(td, item)
+
+		printToDo(item)
+		return td, nil
+	})
+}
+
+// func (t *ToDo) Read
+
+func (t *ToDo) Read() error {
+	jData, err := readJSON()
+	if err != nil {
+		return err
+	}
+
+	if len(jData) == 0 {
+		fmt.Println("nothing to do!")
+	}
+
+	for _, todo := range jData {
+		printToDo(todo)
+	}
+
+	return nil
+}
+
 func (t *ToDo) Update() error {
-	return readAndWrite(func(td []*ToDo) ([]*ToDo, error) {
-		for i, jToDo := range td {
+	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
+		for _, jToDo := range td {
 			if jToDo.ID == t.ID {
-				if t.Text == "" {
+				if t.Text != "" {
 					jToDo.Text = t.Text
 				}
 
@@ -157,7 +154,6 @@ func (t *ToDo) Update() error {
 					jToDo.IsCompleted = t.IsCompleted
 				}
 
-				td[i] = jToDo
 				return td, nil
 			}
 		}
@@ -224,9 +220,10 @@ func (t *ToDo) Delete() {
 
 func main() {
 	s := time.Now()
+	completed := false
 	item := &ToDo{
-		ID:   "baef51",
-		Text: "Get cleaning sheets",
+		ID:          "baef51",
+		IsCompleted: &completed,
 	}
 
 	defer func() {
