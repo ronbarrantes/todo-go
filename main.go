@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/user"
 	"path/filepath"
 	"slices"
 	"time"
@@ -20,20 +19,22 @@ type ToDo struct {
 	Date        time.Time `json:"date"`
 }
 
-func check(e error) {
-	if e != nil {
-		panic(e)
+func getUserDataPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
 	}
-}
 
-func getUserPath() string {
-	currentUser, err := user.Current()
-	check(err)
-	return filepath.Join(currentUser.HomeDir, "Documents", "todo-go")
+	appDir := filepath.Join(home, ".local", "share", "todo-go")
+	if err := os.MkdirAll(appDir, 0700); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(appDir, "todo.json"), nil
 }
 
 func generateId() string {
-	var id [3]byte
+	var id [6]byte
 	_, err := rand.Read(id[:])
 	if err != nil {
 		log.Fatal("Error reading random bytes", err)
@@ -43,14 +44,12 @@ func generateId() string {
 
 func printToDo(t *ToDo) {
 	completed := " "
-	if *t.IsCompleted {
+	if t.IsCompleted != nil && *t.IsCompleted {
 		completed = "x"
 	}
+
 	fmt.Printf("- [%s] id: %s | item %s\n", completed, t.ID, t.Text)
 }
-
-// func init() {
-// }
 
 func writeJSON(t []*ToDo) error {
 	jsonBlob, err := json.MarshalIndent(t, "", " ")
@@ -58,12 +57,19 @@ func writeJSON(t []*ToDo) error {
 		return err
 	}
 
-	path := getUserPath()
+	path, err := getUserDataPath()
+	if err != nil {
+		return err
+	}
 	return os.WriteFile(path, jsonBlob, 0644)
 }
 
 func readJSON() ([]*ToDo, error) {
-	path := getUserPath()
+	path, err := getUserDataPath()
+	if err != nil {
+		return nil, err
+	}
+
 	todos := []*ToDo{}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -85,11 +91,6 @@ func updateStore(fn func([]*ToDo) ([]*ToDo, error)) error {
 	jData, err := readJSON()
 	if err != nil {
 		return err
-	}
-
-	if len(jData) == 0 {
-		fmt.Println("nothing to do!")
-		return nil
 	}
 
 	toReadAndWrite, err := fn(jData)
@@ -131,7 +132,7 @@ func (t *ToDo) Read() error {
 	}
 
 	if len(jData) == 0 {
-		fmt.Println("nothing to do!")
+		return fmt.Errorf("there are no to dos")
 	}
 
 	for _, todo := range jData {
@@ -143,6 +144,11 @@ func (t *ToDo) Read() error {
 
 func (t *ToDo) Update() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
+		if len(td) == 0 {
+			fmt.Println("nothing to do!")
+			return []*ToDo{}, nil
+		}
+
 		for _, jToDo := range td {
 			if jToDo.ID == t.ID {
 				if t.Text != "" {
@@ -162,43 +168,28 @@ func (t *ToDo) Update() error {
 }
 
 func (t *ToDo) ToggleTodo() error {
-	jData, err := readJSON()
-	if err != nil {
-		return err
-	}
-
-	if len(jData) == 0 {
-		fmt.Println("nothing to do!")
-		return nil
-	}
-
-	found := false
-	for i, jToDo := range jData {
-		if jToDo.ID == t.ID {
-			completed := true
-			notCompleted := false
-			if t.IsCompleted != nil || !*jToDo.IsCompleted {
-				jToDo.IsCompleted = &completed
-			} else {
-				jToDo.IsCompleted = &notCompleted
-			}
-
-			found = true
-			jData[i] = jToDo
-			break
+	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
+		if len(td) == 0 {
+			fmt.Println("nothing to do!")
+			return []*ToDo{}, nil
 		}
-	}
 
-	if !found {
-		return fmt.Errorf("to do %s not found", t.ID)
-	}
+		for _, jToDo := range td {
+			if jToDo.ID == t.ID {
+				completed := true
+				notCompleted := false
+				if t.IsCompleted != nil || !*jToDo.IsCompleted {
+					jToDo.IsCompleted = &completed
+				} else {
+					jToDo.IsCompleted = &notCompleted
+				}
 
-	err = writeJSON(jData)
-	if err != nil {
-		return err
-	}
+				return td, nil
+			}
+		}
 
-	return nil
+		return nil, fmt.Errorf("to do %s not found", t.ID)
+	})
 }
 
 func (t *ToDo) SetComplete() error {
