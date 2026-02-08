@@ -292,6 +292,7 @@ func main() {
 		}
 
 	case *completeFlag != "":
+		todo.ID = *completeFlag
 		err := todo.SetComplete()
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
