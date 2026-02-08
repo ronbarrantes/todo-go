@@ -48,6 +48,8 @@ func generateId() string {
 	return fmt.Sprintf("%x", id)
 }
 
+// CREATE A FIND FUNCTION FOR SHORTENED IDS
+
 func printToDo(t *ToDo) {
 	completed := " "
 	if t.IsCompleted {
