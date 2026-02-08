@@ -56,7 +56,7 @@ func printToDo(t *ToDo) {
 		completed = "x"
 	}
 
-	fmt.Printf("- [%s] id: %s | item %s\n", completed, t.ID, t.Text)
+	fmt.Printf("- [%s] (%s) %s\n", completed, t.ID, t.Text)
 }
 
 func writeJSON(t []*ToDo) error {
@@ -234,6 +234,7 @@ func main() {
 	readFlag := flag.Bool("r", false, "Read all to todos")
 	// findFlag := flag.String("f", "", "Find a to todo")
 	updateFlag := flag.String("u", "", "Update a to do")
+	textFlag := flag.String("t", "", "Update a to do")
 	completeFlag := flag.String("x", "", "Update a to do")
 	deleteFlag := flag.String("d", "", "Delete to do")
 	helpFlag := flag.Bool("h", false, "Show help")
@@ -241,12 +242,13 @@ func main() {
 	flag.Parse()
 
 	var upd ToDoUpdate
+	todo := ToDo{}
 
-	if *updateFlag != "" {
-		upd.Text = updateFlag
+	if *textFlag != "" && *updateFlag != "" {
+		upd.Text = textFlag
 	}
 
-	if *completeFlag {
+	if *completeFlag != "" {
 		completed := true
 		upd.IsCompleted = &completed
 	}
@@ -255,7 +257,6 @@ func main() {
 		flag.Usage()
 		os.Exit(0)
 	}
-	todo := ToDo{}
 
 	if len(os.Args) == 1 {
 		fmt.Println("Listing todos by default...")
@@ -267,7 +268,7 @@ func main() {
 		fmt.Println("Reading ....")
 		err := todo.Read()
 		if err != nil {
-			fmt.Printf("error: %v", err)
+			fmt.Printf("error: %v\n", err)
 		}
 
 	case *createFlag != "":
@@ -275,21 +276,25 @@ func main() {
 		todo.Text = *createFlag
 		err := todo.Create()
 		if err != nil {
-			fmt.Printf("error: %v", err)
+			fmt.Printf("error: %v\n", err)
 		}
 
 	case *updateFlag != "":
-		fmt.Printf("the flag is %s\n", *updateFlag)
-		todo.Text = *updateFlag
+		if *textFlag == "" {
+			fmt.Printf(`please provide the text with -t`)
+			os.Exit(1)
+		}
+
+		todo.ID = *updateFlag
 		err := todo.Update(upd)
 		if err != nil {
-			fmt.Printf("error: %v", err)
+			fmt.Printf("error: %v\n", err)
 		}
 
 	case *completeFlag != "":
 		err := todo.SetComplete()
 		if err != nil {
-			fmt.Printf("error: %v", err)
+			fmt.Printf("error: %v\n", err)
 		}
 
 	case *deleteFlag != "":
@@ -297,7 +302,7 @@ func main() {
 		todo.ID = *deleteFlag
 		err := todo.Delete()
 		if err != nil {
-			fmt.Printf("error: %v", err)
+			fmt.Printf("error: %v\n", err)
 		}
 
 	default:
