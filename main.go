@@ -224,28 +224,17 @@ func (t *ToDo) Delete() error {
 
 func main() {
 	s := time.Now()
-	// completed := false
-	// item := &ToDo{
-	// 	ID:          "baef51",
-	// 	IsCompleted: &completed,
-	// }
 
 	defer func() {
 		duration := time.Since(s)
 		fmt.Printf("\nThis program took %v to run\n", duration)
 	}()
 
-	// FULL CRUD
-	// -a : --add
-	// -d : --done
-	// -l : --list
-	// -d: --delete
-
 	createFlag := flag.String("c", "", "Create a to do")
 	readFlag := flag.Bool("r", false, "Read all to todos")
 	// findFlag := flag.String("f", "", "Find a to todo")
 	updateFlag := flag.String("u", "", "Update a to do")
-	completeFlag := flag.Bool("x", false, "Update a to do")
+	completeFlag := flag.String("x", "", "Update a to do")
 	deleteFlag := flag.String("d", "", "Delete to do")
 	helpFlag := flag.Bool("h", false, "Show help")
 
@@ -261,8 +250,6 @@ func main() {
 		completed := true
 		upd.IsCompleted = &completed
 	}
-
-	// fmt.Printf("the help flag %v\n", *helpFlag)
 
 	if *helpFlag {
 		flag.Usage()
@@ -291,6 +278,20 @@ func main() {
 			fmt.Printf("error: %v", err)
 		}
 
+	case *updateFlag != "":
+		fmt.Printf("the flag is %s\n", *updateFlag)
+		todo.Text = *updateFlag
+		err := todo.Update(upd)
+		if err != nil {
+			fmt.Printf("error: %v", err)
+		}
+
+	case *completeFlag != "":
+		err := todo.SetComplete()
+		if err != nil {
+			fmt.Printf("error: %v", err)
+		}
+
 	case *deleteFlag != "":
 		fmt.Printf("the flag is %s\n", *createFlag)
 		todo.ID = *deleteFlag
@@ -304,9 +305,4 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-
-	//	fmt.Printf("Random Value: %v\n", val)
-
-	/// maybe I can have a switch function that checks what has flag has been
-	/// called, probably put it in some function
 }
