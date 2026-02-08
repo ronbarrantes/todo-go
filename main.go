@@ -16,8 +16,13 @@ import (
 type ToDo struct {
 	ID          string    `json:"id"`
 	Text        string    `json:"text"`
-	IsCompleted *bool     `json:"is_completed"`
+	IsCompleted bool      `json:"is_completed"`
 	Date        time.Time `json:"date"`
+}
+
+type ToDoUpdate struct {
+	Text        *string
+	IsCompleted *bool
 }
 
 func getUserDataPath() (string, error) {
@@ -45,7 +50,7 @@ func generateId() string {
 
 func printToDo(t *ToDo) {
 	completed := " "
-	if t.IsCompleted != nil && *t.IsCompleted {
+	if t.IsCompleted {
 		completed = "x"
 	}
 
@@ -114,13 +119,11 @@ func updateStore(fn func([]*ToDo) ([]*ToDo, error)) error {
 func (t *ToDo) Create() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
 		val := generateId()
-
-		completed := false
 		item := &ToDo{
 			ID:          val,
 			Date:        time.Now(),
 			Text:        t.Text,
-			IsCompleted: &completed,
+			IsCompleted: false,
 		}
 
 		td = append(td, item)
@@ -236,8 +239,9 @@ func main() {
 
 	createFlag := flag.String("c", "", "Create a to do")
 	readFlag := flag.Bool("r", false, "Read all to todos")
-	// findFlag := flag.String("f", "", "Find a to todo")
-	// updateFlag := flag.String("u", "", "Update a to do")
+	findFlag := flag.String("f", "", "Find a to todo")
+	updateFlag := flag.String("u", "", "Update a to do")
+	deleteFlag := flag.String("d", "", "Delete to do")
 	helpFlag := flag.Bool("h", false, "Show help")
 
 	flag.Parse()
@@ -258,11 +262,23 @@ func main() {
 	switch {
 	case *readFlag:
 		fmt.Println("Reading ....")
+		err := todo.Read()
+		if err != nil {
+			fmt.Printf("error: %v", err)
+		}
 
 	case *createFlag != "":
 		fmt.Printf("the flag is %s\n", *createFlag)
 		todo.Text = *createFlag
 		err := todo.Create()
+		if err != nil {
+			fmt.Printf("error: %v", err)
+		}
+
+	case *deleteFlag != "":
+		fmt.Printf("the flag is %s\n", *createFlag)
+		todo.ID = *deleteFlag
+		err := todo.Delete()
 		if err != nil {
 			fmt.Printf("error: %v", err)
 		}
