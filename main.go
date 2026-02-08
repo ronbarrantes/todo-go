@@ -150,6 +150,15 @@ func (t *ToDo) Read() error {
 	return nil
 }
 
+func (t *ToDo) ApplyUpdate(u ToDoUpdate) {
+	if u.Text != nil {
+		t.Text = *u.Text
+	}
+	if u.IsCompleted != nil {
+		t.IsCompleted = *u.IsCompleted
+	}
+}
+
 func (t *ToDo) Update() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
 		if len(td) == 0 {
