@@ -159,48 +159,17 @@ func (t *ToDo) ApplyUpdate(u ToDoUpdate) {
 	}
 }
 
-func (t *ToDo) Update() error {
+func (t *ToDo) Update(u ToDoUpdate) error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
 		if len(td) == 0 {
 			fmt.Println("nothing to do!")
 			return []*ToDo{}, nil
 		}
 
-		for _, jToDo := range td {
+		for i, jToDo := range td {
 			if jToDo.ID == t.ID {
-				if t.Text != "" {
-					jToDo.Text = t.Text
-				}
-
-				if t.IsCompleted != nil {
-					jToDo.IsCompleted = t.IsCompleted
-				}
-
-				return td, nil
-			}
-		}
-
-		return nil, fmt.Errorf("to do %s not found", t.ID)
-	})
-}
-
-func (t *ToDo) ToggleTodo() error {
-	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
-		if len(td) == 0 {
-			fmt.Println("nothing to do!")
-			return []*ToDo{}, nil
-		}
-
-		for _, jToDo := range td {
-			if jToDo.ID == t.ID {
-				completed := true
-				notCompleted := false
-				if t.IsCompleted != nil || !*jToDo.IsCompleted {
-					jToDo.IsCompleted = &completed
-				} else {
-					jToDo.IsCompleted = &notCompleted
-				}
-
+				jToDo.ApplyUpdate(u)
+				td[i] = jToDo
 				return td, nil
 			}
 		}
@@ -211,9 +180,33 @@ func (t *ToDo) ToggleTodo() error {
 
 func (t *ToDo) SetComplete() error {
 	completed := true
-	t.IsCompleted = &completed
-	return t.Update()
+	return t.Update(ToDoUpdate{IsCompleted: &completed})
 }
+
+// func (t *ToDo) ToggleTodo() error {
+// 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
+// 		if len(td) == 0 {
+// 			fmt.Println("nothing to do!")
+// 			return []*ToDo{}, nil
+// 		}
+
+// 		for _, jToDo := range td {
+// 			if jToDo.ID == t.ID {
+// 				completed := true
+// 				notCompleted := false
+// 				if t.IsCompleted != nil || !*jToDo.IsCompleted {
+// 					jToDo.IsCompleted = &completed
+// 				} else {
+// 					jToDo.IsCompleted = &notCompleted
+// 				}
+
+// 				return td, nil
+// 			}
+// 		}
+
+// 		return nil, fmt.Errorf("to do %s not found", t.ID)
+// 	})
+// }
 
 func (t *ToDo) Delete() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
@@ -248,12 +241,24 @@ func main() {
 
 	createFlag := flag.String("c", "", "Create a to do")
 	readFlag := flag.Bool("r", false, "Read all to todos")
-	findFlag := flag.String("f", "", "Find a to todo")
+	// findFlag := flag.String("f", "", "Find a to todo")
 	updateFlag := flag.String("u", "", "Update a to do")
+	completeFlag := flag.Bool("x", false, "Update a to do")
 	deleteFlag := flag.String("d", "", "Delete to do")
 	helpFlag := flag.Bool("h", false, "Show help")
 
 	flag.Parse()
+
+	var upd ToDoUpdate
+
+	if *updateFlag != "" {
+		upd.Text = updateFlag
+	}
+
+	if *completeFlag {
+		completed := true
+		upd.IsCompleted = &completed
+	}
 
 	// fmt.Printf("the help flag %v\n", *helpFlag)
 
