@@ -268,6 +268,7 @@ func main() {
 		}
 
 		todo.ID = *updateFlag
+		todo.Text = *textFlag
 		err := todo.Update()
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
