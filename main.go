@@ -229,7 +229,7 @@ func main() {
 	updateFlag := flag.String("u", "", "Update a to do")
 	textFlag := flag.String("t", "", "Update a to do")
 	completeFlag := flag.String("x", "", "Update a to do")
-	toggleFlag := flag.String("tg", "", "Update a to do")
+	// toggleFlag := flag.String("tg", "", "Update a to do")
 	deleteFlag := flag.String("d", "", "Delete to do")
 	helpFlag := flag.Bool("h", false, "Show help")
 
@@ -291,12 +291,13 @@ func main() {
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
-	case *toggleFlag != "":
-		todo.ID = *toggleFlag
-		err := todo.ToggleTodo()
-		if err != nil {
-			fmt.Printf("error: %v\n", err)
-		}
+
+	// case *toggleFlag != "":
+	// 	todo.ID = *toggleFlag
+	// 	err := todo.ToggleTodo()
+	// 	if err != nil {
+	// 		fmt.Printf("error: %v\n", err)
+	// 	}
 
 	case *deleteFlag != "":
 		fmt.Printf("the flag is %s\n", *createFlag)
