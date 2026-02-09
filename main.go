@@ -198,15 +198,12 @@ func (t *ToDo) ToggleTodo() error {
 		}
 
 		todo, err := t.FindItem(td)
-
-		for _, todo := range td {
-			if t.ID == todo.ID {
-				todo.IsCompleted = !todo.IsCompleted
-				return td, nil
-			}
+		if err != nil {
+			return nil, err
 		}
 
-		return nil, fmt.Errorf("to do %s not found", t.ID)
+		todo.IsCompleted = !todo.IsCompleted
+		return td, nil
 	})
 }
 
