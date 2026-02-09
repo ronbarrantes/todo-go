@@ -20,10 +20,10 @@ type ToDo struct {
 	Date        time.Time `json:"date"`
 }
 
-type ToDoUpdate struct {
-	Text        *string
-	IsCompleted *bool
-}
+// type ToDoUpdate struct {
+// 	Text        *string
+// 	IsCompleted *bool
+// }
 
 func getUserDataPath() (string, error) {
 	home, err := os.UserHomeDir()
@@ -152,16 +152,16 @@ func (t *ToDo) Read() error {
 	return nil
 }
 
-func (t *ToDo) ApplyUpdate(u ToDoUpdate) {
-	if u.Text != nil {
-		t.Text = *u.Text
-	}
-	if u.IsCompleted != nil {
-		t.IsCompleted = *u.IsCompleted
-	}
-}
+// func (t *ToDo) ApplyUpdate(u ToDoUpdate) {
+// 	if u.Text != nil {
+// 		t.Text = *u.Text
+// 	}
+// 	if u.IsCompleted != nil {
+// 		t.IsCompleted = *u.IsCompleted
+// 	}
+// }
 
-func (t *ToDo) Update(u ToDoUpdate) error {
+func (t *ToDo) Update() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
 		if len(td) == 0 {
 			fmt.Println("nothing to do!")
@@ -170,19 +170,13 @@ func (t *ToDo) Update(u ToDoUpdate) error {
 
 		for i, jToDo := range td {
 			if jToDo.ID == t.ID {
-				jToDo.ApplyUpdate(u)
-				td[i] = jToDo
+				td[i].Text = t.Text
 				return td, nil
 			}
 		}
 
 		return nil, fmt.Errorf("to do %s not found", t.ID)
 	})
-}
-
-func (t *ToDo) SetComplete() error {
-	completed := true
-	return t.Update(ToDoUpdate{IsCompleted: &completed})
 }
 
 func (t *ToDo) ToggleTodo() error {
@@ -227,25 +221,19 @@ func main() {
 	readFlag := flag.Bool("r", false, "Read all to todos")
 	// findFlag := flag.String("f", "", "Find a to todo")
 	updateFlag := flag.String("u", "", "Update a to do")
-	textFlag := flag.String("t", "", "Update a to do")
-	completeFlag := flag.String("x", "", "Update a to do")
-	// toggleFlag := flag.String("tg", "", "Update a to do")
+	textFlag := flag.String("t", "", "Update the text of a to do")
+	toggleCompleteFlag := flag.String("x", "", "Update completed state")
 	deleteFlag := flag.String("d", "", "Delete to do")
 	helpFlag := flag.Bool("h", false, "Show help")
 
 	flag.Parse()
 
-	var upd ToDoUpdate
+	// var upd ToDoUpdate
 	todo := ToDo{}
 
-	if *textFlag != "" && *updateFlag != "" {
-		upd.Text = textFlag
-	}
-
-	if *completeFlag != "" {
-		completed := true
-		upd.IsCompleted = &completed
-	}
+	// if *textFlag != "" && *updateFlag != "" {
+	// 	upd.Text = textFlag
+	// }
 
 	if *helpFlag {
 		flag.Usage()
@@ -280,13 +268,13 @@ func main() {
 		}
 
 		todo.ID = *updateFlag
-		err := todo.Update(upd)
+		err := todo.Update()
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
 
-	case *completeFlag != "":
-		todo.ID = *completeFlag
+	case *toggleCompleteFlag != "":
+		todo.ID = *toggleCompleteFlag
 		err := todo.ToggleTodo()
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
