@@ -179,12 +179,25 @@ func (t *ToDo) Update() error {
 	})
 }
 
+// / Working on this bit
+func (t *ToDo) FindItem(td []*ToDo) (*ToDo, error) {
+	for _, todo := range td {
+		if t.ID == todo.ID {
+			return todo, nil
+		}
+	}
+
+	return nil, fmt.Errorf("to do %s not found", t.ID)
+}
+
 func (t *ToDo) ToggleTodo() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
 		if len(td) == 0 {
 			fmt.Println("nothing to do!")
 			return []*ToDo{}, nil
 		}
+
+		todo, err := t.FindItem(td)
 
 		for _, todo := range td {
 			if t.ID == todo.ID {
