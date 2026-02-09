@@ -20,11 +20,6 @@ type ToDo struct {
 	Date        time.Time `json:"date"`
 }
 
-// type ToDoUpdate struct {
-// 	Text        *string
-// 	IsCompleted *bool
-// }
-
 func getUserDataPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -49,7 +44,6 @@ func generateId() string {
 }
 
 // CREATE A FIND FUNCTION FOR SHORTENED IDS
-
 func printToDo(t *ToDo) {
 	completed := " "
 	if t.IsCompleted {
@@ -168,18 +162,16 @@ func (t *ToDo) Update() error {
 			return []*ToDo{}, nil
 		}
 
-		for i, jToDo := range td {
-			if jToDo.ID == t.ID {
-				td[i].Text = t.Text
-				return td, nil
-			}
+		todo, err := t.FindItem(td)
+		if err != nil {
+			return nil, err
 		}
 
-		return nil, fmt.Errorf("to do %s not found", t.ID)
+		todo.Text = t.Text
+		return td, nil
 	})
 }
 
-// / Working on this bit
 func (t *ToDo) FindItem(td []*ToDo) (*ToDo, error) {
 	for _, todo := range td {
 		if t.ID == todo.ID {
