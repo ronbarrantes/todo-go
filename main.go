@@ -230,12 +230,7 @@ func main() {
 
 	flag.Parse()
 
-	// var upd ToDoUpdate
 	todo := ToDo{}
-
-	// if *textFlag != "" && *updateFlag != "" {
-	// 	upd.Text = textFlag
-	// }
 
 	if *helpFlag {
 		flag.Usage()
@@ -244,6 +239,10 @@ func main() {
 
 	if len(os.Args) == 1 {
 		fmt.Println("Listing todos by default...")
+		err := todo.Read()
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
 		return
 	}
 
@@ -256,7 +255,6 @@ func main() {
 		}
 
 	case *createFlag != "":
-		fmt.Printf("the flag is %s\n", *createFlag)
 		todo.Text = *createFlag
 		err := todo.Create()
 		if err != nil {
@@ -283,15 +281,7 @@ func main() {
 			fmt.Printf("error: %v\n", err)
 		}
 
-	// case *toggleFlag != "":
-	// 	todo.ID = *toggleFlag
-	// 	err := todo.ToggleTodo()
-	// 	if err != nil {
-	// 		fmt.Printf("error: %v\n", err)
-	// 	}
-
 	case *deleteFlag != "":
-		fmt.Printf("the flag is %s\n", *createFlag)
 		todo.ID = *deleteFlag
 		err := todo.Delete()
 		if err != nil {
