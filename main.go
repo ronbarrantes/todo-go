@@ -185,30 +185,23 @@ func (t *ToDo) SetComplete() error {
 	return t.Update(ToDoUpdate{IsCompleted: &completed})
 }
 
-// func (t *ToDo) ToggleTodo() error {
-// 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
-// 		if len(td) == 0 {
-// 			fmt.Println("nothing to do!")
-// 			return []*ToDo{}, nil
-// 		}
+func (t *ToDo) ToggleTodo() error {
+	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
+		if len(td) == 0 {
+			fmt.Println("nothing to do!")
+			return []*ToDo{}, nil
+		}
 
-// 		for _, jToDo := range td {
-// 			if jToDo.ID == t.ID {
-// 				completed := true
-// 				notCompleted := false
-// 				if t.IsCompleted != nil || !*jToDo.IsCompleted {
-// 					jToDo.IsCompleted = &completed
-// 				} else {
-// 					jToDo.IsCompleted = &notCompleted
-// 				}
+		for _, todo := range td {
+			if t.ID == todo.ID {
+				todo.IsCompleted = !todo.IsCompleted
+				return td, nil
+			}
+		}
 
-// 				return td, nil
-// 			}
-// 		}
-
-// 		return nil, fmt.Errorf("to do %s not found", t.ID)
-// 	})
-// }
+		return nil, fmt.Errorf("to do %s not found", t.ID)
+	})
+}
 
 func (t *ToDo) Delete() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
@@ -236,6 +229,7 @@ func main() {
 	updateFlag := flag.String("u", "", "Update a to do")
 	textFlag := flag.String("t", "", "Update a to do")
 	completeFlag := flag.String("x", "", "Update a to do")
+	toggleFlag := flag.String("tg", "", "Update a to do")
 	deleteFlag := flag.String("d", "", "Delete to do")
 	helpFlag := flag.Bool("h", false, "Show help")
 
@@ -293,7 +287,13 @@ func main() {
 
 	case *completeFlag != "":
 		todo.ID = *completeFlag
-		err := todo.SetComplete()
+		err := todo.ToggleTodo()
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
+	case *toggleFlag != "":
+		todo.ID = *toggleFlag
+		err := todo.ToggleTodo()
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
