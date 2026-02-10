@@ -166,7 +166,7 @@ func (t *ToDo) Update() error {
 
 func (t *ToDo) FindItem(td []*ToDo) (*ToDo, error) {
 	for _, todo := range td {
-		if len(t.ID) >= 4 && s.HasPrefix(t.ID, todo.ID) {
+		if len(t.ID) >= 4 && s.HasPrefix(todo.ID, t.ID) {
 			return todo, nil
 		}
 	}
