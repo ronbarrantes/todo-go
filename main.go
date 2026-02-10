@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	s "strings"
 	"time"
 )
 
@@ -146,15 +147,6 @@ func (t *ToDo) Read() error {
 	return nil
 }
 
-// func (t *ToDo) ApplyUpdate(u ToDoUpdate) {
-// 	if u.Text != nil {
-// 		t.Text = *u.Text
-// 	}
-// 	if u.IsCompleted != nil {
-// 		t.IsCompleted = *u.IsCompleted
-// 	}
-// }
-
 func (t *ToDo) Update() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
 		if len(td) == 0 {
@@ -174,7 +166,7 @@ func (t *ToDo) Update() error {
 
 func (t *ToDo) FindItem(td []*ToDo) (*ToDo, error) {
 	for _, todo := range td {
-		if t.ID == todo.ID {
+		if len(t.ID) >= 4 && s.HasPrefix(t.ID, todo.ID) {
 			return todo, nil
 		}
 	}
