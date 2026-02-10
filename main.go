@@ -193,8 +193,13 @@ func (t *ToDo) ToggleTodo() error {
 
 func (t *ToDo) Delete() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
+		found, err := t.FindItem(td)
+		if err != nil {
+			return nil, err
+		}
+
 		for i, todo := range td {
-			if todo.ID == t.ID {
+			if todo.ID == found.ID {
 				return slices.Delete(td, i, i+1), nil
 			}
 		}
