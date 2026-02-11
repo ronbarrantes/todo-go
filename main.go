@@ -4,18 +4,20 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"slices"
+	s "strings"
 	"time"
 )
 
 type ToDo struct {
 	ID          string    `json:"id"`
 	Text        string    `json:"text"`
-	IsCompleted *bool     `json:"is_completed"`
+	IsCompleted bool      `json:"is_completed"`
 	Date        time.Time `json:"date"`
 }
 
@@ -42,13 +44,14 @@ func generateId() string {
 	return fmt.Sprintf("%x", id)
 }
 
+// CREATE A FIND FUNCTION FOR SHORTENED IDS
 func printToDo(t *ToDo) {
 	completed := " "
-	if t.IsCompleted != nil && *t.IsCompleted {
+	if t.IsCompleted {
 		completed = "x"
 	}
 
-	fmt.Printf("- [%s] id: %s | item %s\n", completed, t.ID, t.Text)
+	fmt.Printf("- [%s] (%s) %s\n", completed, t.ID, t.Text)
 }
 
 func writeJSON(t []*ToDo) error {
@@ -113,13 +116,11 @@ func updateStore(fn func([]*ToDo) ([]*ToDo, error)) error {
 func (t *ToDo) Create() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
 		val := generateId()
-
-		completed := false
 		item := &ToDo{
 			ID:          val,
 			Date:        time.Now(),
 			Text:        t.Text,
-			IsCompleted: &completed,
+			IsCompleted: false,
 		}
 
 		td = append(td, item)
@@ -153,22 +154,24 @@ func (t *ToDo) Update() error {
 			return []*ToDo{}, nil
 		}
 
-		for _, jToDo := range td {
-			if jToDo.ID == t.ID {
-				if t.Text != "" {
-					jToDo.Text = t.Text
-				}
-
-				if t.IsCompleted != nil {
-					jToDo.IsCompleted = t.IsCompleted
-				}
-
-				return td, nil
-			}
+		todo, err := t.FindItem(td)
+		if err != nil {
+			return nil, err
 		}
 
-		return nil, fmt.Errorf("to do %s not found", t.ID)
+		todo.Text = t.Text
+		return td, nil
 	})
+}
+
+func (t *ToDo) FindItem(td []*ToDo) (*ToDo, error) {
+	for _, todo := range td {
+		if len(t.ID) >= 4 && s.HasPrefix(todo.ID, t.ID) {
+			return todo, nil
+		}
+	}
+
+	return nil, fmt.Errorf("to do %s not found", t.ID)
 }
 
 func (t *ToDo) ToggleTodo() error {
@@ -178,34 +181,25 @@ func (t *ToDo) ToggleTodo() error {
 			return []*ToDo{}, nil
 		}
 
-		for _, jToDo := range td {
-			if jToDo.ID == t.ID {
-				completed := true
-				notCompleted := false
-				if t.IsCompleted != nil || !*jToDo.IsCompleted {
-					jToDo.IsCompleted = &completed
-				} else {
-					jToDo.IsCompleted = &notCompleted
-				}
-
-				return td, nil
-			}
+		todo, err := t.FindItem(td)
+		if err != nil {
+			return nil, err
 		}
 
-		return nil, fmt.Errorf("to do %s not found", t.ID)
+		todo.IsCompleted = !todo.IsCompleted
+		return td, nil
 	})
-}
-
-func (t *ToDo) SetComplete() error {
-	completed := true
-	t.IsCompleted = &completed
-	return t.Update()
 }
 
 func (t *ToDo) Delete() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
+		found, err := t.FindItem(td)
+		if err != nil {
+			return nil, err
+		}
+
 		for i, todo := range td {
-			if todo.ID == t.ID {
+			if todo.ID == found.ID {
 				return slices.Delete(td, i, i+1), nil
 			}
 		}
@@ -216,30 +210,85 @@ func (t *ToDo) Delete() error {
 
 func main() {
 	s := time.Now()
-	completed := false
-	item := &ToDo{
-		ID:          "baef51",
-		IsCompleted: &completed,
-	}
 
 	defer func() {
 		duration := time.Since(s)
 		fmt.Printf("\nThis program took %v to run\n", duration)
 	}()
 
-	// FULL CRUD
-	// -a : --add
-	// -d : --done
-	// -l : --list
-	// -d: --delete
+	createFlag := flag.String("c", "", "Create a to do")
+	readFlag := flag.Bool("r", false, "Read all to todos")
+	// findFlag := flag.String("f", "", "Find a to todo")
+	updateFlag := flag.String("u", "", "Update a to do")
+	textFlag := flag.String("t", "", "Update the text of a to do")
+	toggleCompleteFlag := flag.String("x", "", "Update completed state")
+	deleteFlag := flag.String("d", "", "Delete to do")
+	helpFlag := flag.Bool("h", false, "Show help")
 
-	err := item.Delete()
-	if err != nil {
-		fmt.Printf("error: %s", err)
+	flag.Parse()
+
+	todo := ToDo{}
+
+	if *helpFlag {
+		flag.Usage()
+		os.Exit(0)
 	}
 
-	//	fmt.Printf("Random Value: %v\n", val)
+	if len(os.Args) == 1 {
+		fmt.Println("Listing todos by default...")
+		err := todo.Read()
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
+		return
+	}
 
-	/// maybe I can have a switch function that checks what has flag has been
-	/// called, probably put it in some function
+	switch {
+	case *readFlag:
+		fmt.Println("Reading ....")
+		err := todo.Read()
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
+
+	case *createFlag != "":
+		todo.Text = *createFlag
+		err := todo.Create()
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
+
+	case *updateFlag != "":
+		if *textFlag == "" {
+			fmt.Println("please provide the text with -t")
+			os.Exit(1)
+		}
+
+		todo.ID = *updateFlag
+		todo.Text = *textFlag
+		err := todo.Update()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case *toggleCompleteFlag != "":
+		todo.ID = *toggleCompleteFlag
+		err := todo.ToggleTodo()
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
+
+	case *deleteFlag != "":
+		todo.ID = *deleteFlag
+		err := todo.Delete()
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
+
+	default:
+		fmt.Println("Unknown flag or no action")
+		flag.Usage()
+		os.Exit(1)
+	}
 }
