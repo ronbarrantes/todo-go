@@ -260,7 +260,7 @@ func main() {
 
 	case *updateFlag != "":
 		if *textFlag == "" {
-			fmt.Printf(`please provide the text with -t`)
+			fmt.Println("please provide the text with -t")
 			os.Exit(1)
 		}
 
@@ -268,7 +268,8 @@ func main() {
 		todo.Text = *textFlag
 		err := todo.Update()
 		if err != nil {
-			fmt.Printf("error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
 		}
 
 	case *toggleCompleteFlag != "":
