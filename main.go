@@ -12,13 +12,19 @@ import (
 	"slices"
 	s "strings"
 	"time"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type ToDo struct {
-	ID          string    `json:"id"`
-	Text        string    `json:"text"`
-	IsCompleted bool      `json:"is_completed"`
-	Date        time.Time `json:"date"`
+	gorm.Model
+	Text        string `gorm:"text"`
+	IsCompleted bool   `gorm:"is_completed"`
+}
+
+type DBContext struct {
+	db *gorm.DB
 }
 
 func getUserDataPath() (string, error) {
@@ -33,6 +39,26 @@ func getUserDataPath() (string, error) {
 	}
 
 	return filepath.Join(appDir, "todo.json"), nil
+}
+
+func (ctx *DBContext) getDatabase() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	appDir := filepath.Join(home, ".local", "share", "todo-go")
+	if err := os.MkdirAll(appDir, 0700); err != nil {
+		return err
+	}
+
+	db, err := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	ctx.db = db
+	return nil
 }
 
 func generateId() string {
@@ -65,6 +91,23 @@ func writeJSON(t []*ToDo) error {
 		return err
 	}
 	return os.WriteFile(path, jsonBlob, 0644)
+}
+
+func (ctx *DBContext) Read() error {
+	var todos []*ToDo
+	if err := ctx.db.Find(todos).Error; err != nil {
+		return err
+	}
+
+	if len(todos) == 0 {
+		return fmt.Errorf("there are no to-dos")
+	}
+
+	for _, todo := range todos {
+		printToDo(todo)
+	}
+
+	return nil
 }
 
 func readJSON() ([]*ToDo, error) {
@@ -115,10 +158,7 @@ func updateStore(fn func([]*ToDo) ([]*ToDo, error)) error {
 
 func (t *ToDo) Create() error {
 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
-		val := generateId()
 		item := &ToDo{
-			ID:          val,
-			Date:        time.Now(),
 			Text:        t.Text,
 			IsCompleted: false,
 		}
@@ -210,6 +250,14 @@ func (t *ToDo) Delete() error {
 
 func main() {
 	s := time.Now()
+	var dbCtx DBContext
+	err := dbCtx.getDatabase()
+	if err != nil {
+		fmt.Printf("error: %v", err)
+		os.Exit(1)
+	}
+
+	dbCtx.db.AutoMigrate(&ToDo{})
 
 	defer func() {
 		duration := time.Since(s)
