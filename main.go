@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -22,11 +21,11 @@ type ToDo struct {
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
 }
 
-type DBContext struct {
+type Store struct {
 	db *gorm.DB
 }
 
-func (ctx *DBContext) getDatabase() error {
+func (store *Store) GetDatabase() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -37,22 +36,24 @@ func (ctx *DBContext) getDatabase() error {
 		return err
 	}
 
-	db, err := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
+	gormPath := filepath.Join(appDir, "gorm.db")
+
+	db, err := gorm.Open(sqlite.Open(gormPath), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
 
-	ctx.db = db
+	store.db = db
 	return nil
 }
 
-func generateId() string {
+func generateId() (string, error) {
 	var id [6]byte
 	_, err := rand.Read(id[:])
 	if err != nil {
-		log.Fatal("Error reading random bytes", err)
+		return "", err
 	}
-	return fmt.Sprintf("%x", id)
+	return fmt.Sprintf("%x", id), nil
 }
 
 // CREATE A FIND FUNCTION FOR SHORTENED IDS
@@ -65,15 +66,19 @@ func printToDo(t *ToDo) {
 	fmt.Printf("- [%s] (%s) %s\n", completed, t.ID, t.Text)
 }
 
-func (ctx *DBContext) Create(t string) error {
-	id := generateId()
+func (store *Store) Create(t string) error {
+	id, err := generateId()
+	if err != nil {
+		return err
+	}
+
 	item := &ToDo{
 		ID:          id,
 		Text:        t,
 		IsCompleted: false,
 	}
 
-	if err := ctx.db.Create(item).Error; err != nil {
+	if err := store.db.Create(item).Error; err != nil {
 		fmt.Printf("To-do %s not created\n", id)
 		return err
 	}
@@ -82,9 +87,9 @@ func (ctx *DBContext) Create(t string) error {
 	return nil
 }
 
-func (ctx *DBContext) Read() error {
+func (store *Store) Read() error {
 	var todos []*ToDo
-	if err := ctx.db.Find(&todos).Error; err != nil {
+	if err := store.db.Find(&todos).Error; err != nil {
 		return err
 	}
 
@@ -99,8 +104,8 @@ func (ctx *DBContext) Read() error {
 	return nil
 }
 
-func (ctx *DBContext) Update(td *ToDo) error {
-	if err := ctx.db.Model(&td).Update("Text", &td.Text).Error; err != nil {
+func (store *Store) Update(td *ToDo) error {
+	if err := store.db.Model(&td).Update("Text", td.Text).Error; err != nil {
 		fmt.Printf("To-do %s not updated", td.ID)
 		return err
 	}
@@ -108,8 +113,8 @@ func (ctx *DBContext) Update(td *ToDo) error {
 	return nil
 }
 
-func (ctx *DBContext) Delete(id string) error {
-	if err := ctx.db.Delete(&ToDo{ID: id}).Error; err != nil {
+func (store *Store) Delete(id string) error {
+	if err := store.db.Delete(&ToDo{ID: id}).Error; err != nil {
 		fmt.Printf("To-do %s not deleted", id)
 		return err
 	}
@@ -117,15 +122,15 @@ func (ctx *DBContext) Delete(id string) error {
 	return nil
 }
 
-func (ctx *DBContext) ToggleTodo(id string) error {
-	var todo *ToDo
-	if err := ctx.db.Find(&todo).Where("id = ?", id).Error; err != nil {
+func (store *Store) ToggleTodo(id string) error {
+	var todo ToDo
+	if err := store.db.Where("id = ?", id).First(&todo).Error; err != nil {
 		return err
 	}
 
-	todo.IsCompleted = !todo.IsCompleted
+	completed := !todo.IsCompleted
 
-	if err := ctx.Update(todo); err != nil {
+	if err := store.db.Model(&todo).Update("is_completed", completed).Error; err != nil {
 		return err
 	}
 	return nil
@@ -133,14 +138,14 @@ func (ctx *DBContext) ToggleTodo(id string) error {
 
 func main() {
 	s := time.Now()
-	var dbCtx DBContext
-	err := dbCtx.getDatabase()
+	var store Store
+	err := store.GetDatabase()
 	if err != nil {
 		fmt.Printf("error: %v", err)
 		os.Exit(1)
 	}
 
-	dbCtx.db.AutoMigrate(&ToDo{})
+	store.db.AutoMigrate(&ToDo{})
 
 	defer func() {
 		duration := time.Since(s)
@@ -167,7 +172,7 @@ func main() {
 
 	if len(os.Args) == 1 {
 		fmt.Println("Listing todos by default...")
-		err := dbCtx.Read()
+		err := store.Read()
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
@@ -177,13 +182,13 @@ func main() {
 	switch {
 	case *readFlag:
 		fmt.Println("Reading ....")
-		err := dbCtx.Read()
+		err := store.Read()
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
 
 	case *createFlag != "":
-		err := dbCtx.Create(*createFlag)
+		err := store.Create(*createFlag)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
@@ -196,20 +201,20 @@ func main() {
 
 		todo.ID = *updateFlag
 		todo.Text = *textFlag
-		err := dbCtx.Update(&todo)
+		err := store.Update(&todo)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
 
 	case *toggleCompleteFlag != "":
-		err := dbCtx.ToggleTodo(*toggleCompleteFlag)
+		err := store.ToggleTodo(*toggleCompleteFlag)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
 
 	case *deleteFlag != "":
-		err := dbCtx.Delete(*deleteFlag)
+		err := store.Delete(*deleteFlag)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
