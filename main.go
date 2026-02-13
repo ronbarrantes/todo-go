@@ -104,33 +104,63 @@ func (store *Store) Read() error {
 	return nil
 }
 
+func (store *Store) FindShortId(prefix string) (*ToDo, error) {
+	var todos []ToDo
+
+	if len(prefix) < 3 {
+		return nil, fmt.Errorf("Prefix needs to be longer than 3 characters")
+	}
+
+	if err := store.db.Where("id LIKE ?", prefix+"%").Find(&todos).Error; err != nil {
+		return nil, err
+	}
+
+	switch len(todos) {
+	case 0:
+		return nil, fmt.Errorf("No to-do found")
+
+	case 1:
+		return &todos[0], nil
+
+	default:
+		return nil, fmt.Errorf("Too ambiguous")
+	}
+}
+
 func (store *Store) Update(td *ToDo) error {
-	if err := store.db.Model(&td).Update("Text", td.Text).Error; err != nil {
-		fmt.Printf("To-do %s not updated", td.ID)
+	todo, err := store.FindShortId(td.ID)
+	if err != nil {
 		return err
 	}
-	fmt.Printf("To-do %s updated", td.ID)
+
+	if err := store.db.Model(todo).Update("Text", td.Text).Error; err != nil {
+		fmt.Printf("To-do %s not updated\n", td.ID)
+		return err
+	}
+	fmt.Printf("To-do %s updated\n", td.ID)
 	return nil
 }
 
 func (store *Store) Delete(id string) error {
-	if err := store.db.Delete(&ToDo{ID: id}).Error; err != nil {
-		fmt.Printf("To-do %s not deleted", id)
+	todo, err := store.FindShortId(id)
+	if err != nil {
 		return err
 	}
-	fmt.Printf("To-do %s deleted", id)
+	if err := store.db.Delete(todo).Error; err != nil {
+		fmt.Printf("To-do %s not deleted\n", id)
+		return err
+	}
+	fmt.Printf("To-do %s deleted\n", id)
 	return nil
 }
 
 func (store *Store) ToggleTodo(id string) error {
-	var todo ToDo
-	if err := store.db.Where("id = ?", id).First(&todo).Error; err != nil {
+	todo, err := store.FindShortId(id)
+	if err != nil {
 		return err
 	}
-
 	completed := !todo.IsCompleted
-
-	if err := store.db.Model(&todo).Update("is_completed", completed).Error; err != nil {
+	if err := store.db.Model(todo).Update("is_completed", completed).Error; err != nil {
 		return err
 	}
 	return nil
