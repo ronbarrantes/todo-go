@@ -137,6 +137,7 @@ func (store *Store) Update(td *ToDo) error {
 		fmt.Printf("To-do %s not updated\n", td.ID)
 		return err
 	}
+
 	fmt.Printf("To-do %s updated\n", td.ID)
 	return nil
 }
@@ -163,6 +164,8 @@ func (store *Store) ToggleTodo(id string) error {
 	if err := store.db.Model(todo).Update("is_completed", completed).Error; err != nil {
 		return err
 	}
+
+	fmt.Printf("To-do %s toggled\n", id)
 	return nil
 }
 
@@ -179,16 +182,16 @@ func main() {
 
 	defer func() {
 		duration := time.Since(s)
-		fmt.Printf("\nThis program took %v to run\n", duration)
+		fmt.Printf("-----\nThis program took %v to run\n", duration)
 	}()
 
-	createFlag := flag.String("c", "", "Create a to do")
-	readFlag := flag.Bool("r", false, "Read all to todos")
+	createFlag := flag.String("c", "", "Create a to-do")
+	readFlag := flag.Bool("l", false, "List all to-dos")
 	// findFlag := flag.String("f", "", "Find a to todo")
-	updateFlag := flag.String("u", "", "Update a to do")
-	textFlag := flag.String("t", "", "Update the text of a to do")
-	toggleCompleteFlag := flag.String("x", "", "Update completed state")
-	deleteFlag := flag.String("d", "", "Delete to do")
+	updateFlag := flag.String("u", "", "Update a to-do")
+	textFlag := flag.String("t", "", "Update the text of a to-do")
+	toggleCompleteFlag := flag.String("x", "", "Toggle to-do completion")
+	deleteFlag := flag.String("d", "", "Delete to-do")
 	helpFlag := flag.Bool("h", false, "Show help")
 
 	flag.Parse()
