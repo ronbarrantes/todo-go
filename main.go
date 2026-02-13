@@ -2,46 +2,58 @@ package main
 
 import (
 	"crypto/rand"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
-	"slices"
-	s "strings"
 	"time"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type ToDo struct {
-	ID          string    `json:"id"`
-	Text        string    `json:"text"`
-	IsCompleted bool      `json:"is_completed"`
-	Date        time.Time `json:"date"`
+	ID          string `gorm:"primaryKey"`
+	Text        string `gorm:"text"`
+	IsCompleted bool   `gorm:"is_completed"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   gorm.DeletedAt `gorm:"index"`
 }
 
-func getUserDataPath() (string, error) {
+type Store struct {
+	db *gorm.DB
+}
+
+func (store *Store) GetDatabase() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	appDir := filepath.Join(home, ".local", "share", "todo-go")
 	if err := os.MkdirAll(appDir, 0700); err != nil {
-		return "", err
+		return err
 	}
 
-	return filepath.Join(appDir, "todo.json"), nil
+	gormPath := filepath.Join(appDir, "gorm.db")
+
+	db, err := gorm.Open(sqlite.Open(gormPath), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	store.db = db
+	return nil
 }
 
-func generateId() string {
+func generateId() (string, error) {
 	var id [6]byte
 	_, err := rand.Read(id[:])
 	if err != nil {
-		log.Fatal("Error reading random bytes", err)
+		return "", err
 	}
-	return fmt.Sprintf("%x", id)
+	return fmt.Sprintf("%x", id), nil
 }
 
 // CREATE A FIND FUNCTION FOR SHORTENED IDS
@@ -54,175 +66,132 @@ func printToDo(t *ToDo) {
 	fmt.Printf("- [%s] (%s) %s\n", completed, t.ID, t.Text)
 }
 
-func writeJSON(t []*ToDo) error {
-	jsonBlob, err := json.MarshalIndent(t, "", " ")
+func (store *Store) Create(t string) error {
+	id, err := generateId()
 	if err != nil {
 		return err
 	}
 
-	path, err := getUserDataPath()
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, jsonBlob, 0644)
-}
-
-func readJSON() ([]*ToDo, error) {
-	path, err := getUserDataPath()
-	if err != nil {
-		return nil, err
+	item := &ToDo{
+		ID:          id,
+		Text:        t,
+		IsCompleted: false,
 	}
 
-	todos := []*ToDo{}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return todos, nil
-		}
-
-		return nil, err
-	}
-
-	if len(data) == 0 {
-		return todos, nil
-	}
-
-	if err = json.Unmarshal(data, &todos); err != nil {
-		return nil, err
-	}
-
-	return todos, nil
-}
-
-func updateStore(fn func([]*ToDo) ([]*ToDo, error)) error {
-	jData, err := readJSON()
-	if err != nil {
+	if err := store.db.Create(item).Error; err != nil {
+		fmt.Printf("To-do %s not created\n", id)
 		return err
 	}
 
-	toReadAndWrite, err := fn(jData)
-	if err != nil {
-		return err
-	}
-
-	err = writeJSON(toReadAndWrite)
-	if err != nil {
-		return err
-	}
-
+	fmt.Printf("To-do %s created\n", id)
 	return nil
 }
 
-func (t *ToDo) Create() error {
-	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
-		val := generateId()
-		item := &ToDo{
-			ID:          val,
-			Date:        time.Now(),
-			Text:        t.Text,
-			IsCompleted: false,
-		}
-
-		td = append(td, item)
-
-		printToDo(item)
-		return td, nil
-	})
-}
-
-func (t *ToDo) Read() error {
-	jData, err := readJSON()
-	if err != nil {
+func (store *Store) Read() error {
+	var todos []*ToDo
+	if err := store.db.Find(&todos).Error; err != nil {
 		return err
 	}
 
-	if len(jData) == 0 {
-		return fmt.Errorf("there are no to dos")
+	if len(todos) == 0 {
+		return fmt.Errorf("There are no to-dos")
 	}
 
-	for _, todo := range jData {
+	for _, todo := range todos {
 		printToDo(todo)
 	}
 
 	return nil
 }
 
-func (t *ToDo) Update() error {
-	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
-		if len(td) == 0 {
-			fmt.Println("nothing to do!")
-			return []*ToDo{}, nil
-		}
+func (store *Store) FindShortId(prefix string) (*ToDo, error) {
+	var todos []ToDo
 
-		todo, err := t.FindItem(td)
-		if err != nil {
-			return nil, err
-		}
-
-		todo.Text = t.Text
-		return td, nil
-	})
-}
-
-func (t *ToDo) FindItem(td []*ToDo) (*ToDo, error) {
-	for _, todo := range td {
-		if len(t.ID) >= 4 && s.HasPrefix(todo.ID, t.ID) {
-			return todo, nil
-		}
+	if len(prefix) < 3 {
+		return nil, fmt.Errorf("Prefix needs to be longer than 3 characters")
 	}
 
-	return nil, fmt.Errorf("to do %s not found", t.ID)
+	if err := store.db.Where("id LIKE ?", prefix+"%").Find(&todos).Error; err != nil {
+		return nil, err
+	}
+
+	switch len(todos) {
+	case 0:
+		return nil, fmt.Errorf("No to-do found")
+
+	case 1:
+		return &todos[0], nil
+
+	default:
+		return nil, fmt.Errorf("Too ambiguous")
+	}
 }
 
-func (t *ToDo) ToggleTodo() error {
-	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
-		if len(td) == 0 {
-			fmt.Println("nothing to do!")
-			return []*ToDo{}, nil
-		}
+func (store *Store) Update(td *ToDo) error {
+	todo, err := store.FindShortId(td.ID)
+	if err != nil {
+		return err
+	}
 
-		todo, err := t.FindItem(td)
-		if err != nil {
-			return nil, err
-		}
+	if err := store.db.Model(todo).Update("Text", td.Text).Error; err != nil {
+		fmt.Printf("To-do %s not updated\n", td.ID)
+		return err
+	}
 
-		todo.IsCompleted = !todo.IsCompleted
-		return td, nil
-	})
+	fmt.Printf("To-do %s updated\n", td.ID)
+	return nil
 }
 
-func (t *ToDo) Delete() error {
-	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
-		found, err := t.FindItem(td)
-		if err != nil {
-			return nil, err
-		}
+func (store *Store) Delete(id string) error {
+	todo, err := store.FindShortId(id)
+	if err != nil {
+		return err
+	}
+	if err := store.db.Delete(todo).Error; err != nil {
+		fmt.Printf("To-do %s not deleted\n", id)
+		return err
+	}
+	fmt.Printf("To-do %s deleted\n", id)
+	return nil
+}
 
-		for i, todo := range td {
-			if todo.ID == found.ID {
-				return slices.Delete(td, i, i+1), nil
-			}
-		}
+func (store *Store) ToggleTodo(id string) error {
+	todo, err := store.FindShortId(id)
+	if err != nil {
+		return err
+	}
+	completed := !todo.IsCompleted
+	if err := store.db.Model(todo).Update("is_completed", completed).Error; err != nil {
+		return err
+	}
 
-		return nil, fmt.Errorf("to do with id %s not found", t.ID)
-	})
+	fmt.Printf("To-do %s toggled\n", id)
+	return nil
 }
 
 func main() {
 	s := time.Now()
+	var store Store
+	err := store.GetDatabase()
+	if err != nil {
+		fmt.Printf("error: %v", err)
+		os.Exit(1)
+	}
+
+	store.db.AutoMigrate(&ToDo{})
 
 	defer func() {
 		duration := time.Since(s)
-		fmt.Printf("\nThis program took %v to run\n", duration)
+		fmt.Printf("-----\nThis program took %v to run\n", duration)
 	}()
 
-	createFlag := flag.String("c", "", "Create a to do")
-	readFlag := flag.Bool("r", false, "Read all to todos")
+	createFlag := flag.String("c", "", "Create a to-do")
+	readFlag := flag.Bool("l", false, "List all to-dos")
 	// findFlag := flag.String("f", "", "Find a to todo")
-	updateFlag := flag.String("u", "", "Update a to do")
-	textFlag := flag.String("t", "", "Update the text of a to do")
-	toggleCompleteFlag := flag.String("x", "", "Update completed state")
-	deleteFlag := flag.String("d", "", "Delete to do")
+	updateFlag := flag.String("u", "", "Update a to-do")
+	textFlag := flag.String("t", "", "Update the text of a to-do")
+	toggleCompleteFlag := flag.String("x", "", "Toggle to-do completion")
+	deleteFlag := flag.String("d", "", "Delete to-do")
 	helpFlag := flag.Bool("h", false, "Show help")
 
 	flag.Parse()
@@ -236,7 +205,7 @@ func main() {
 
 	if len(os.Args) == 1 {
 		fmt.Println("Listing todos by default...")
-		err := todo.Read()
+		err := store.Read()
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
@@ -246,14 +215,13 @@ func main() {
 	switch {
 	case *readFlag:
 		fmt.Println("Reading ....")
-		err := todo.Read()
+		err := store.Read()
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
 
 	case *createFlag != "":
-		todo.Text = *createFlag
-		err := todo.Create()
+		err := store.Create(*createFlag)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
@@ -266,22 +234,20 @@ func main() {
 
 		todo.ID = *updateFlag
 		todo.Text = *textFlag
-		err := todo.Update()
+		err := store.Update(&todo)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
 
 	case *toggleCompleteFlag != "":
-		todo.ID = *toggleCompleteFlag
-		err := todo.ToggleTodo()
+		err := store.ToggleTodo(*toggleCompleteFlag)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
 
 	case *deleteFlag != "":
-		todo.ID = *deleteFlag
-		err := todo.Delete()
+		err := store.Delete(*deleteFlag)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
