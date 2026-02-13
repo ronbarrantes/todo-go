@@ -26,20 +26,6 @@ type DBContext struct {
 	db *gorm.DB
 }
 
-func getUserDataPath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	appDir := filepath.Join(home, ".local", "share", "todo-go")
-	if err := os.MkdirAll(appDir, 0700); err != nil {
-		return "", err
-	}
-
-	return filepath.Join(appDir, "todo.json"), nil
-}
-
 func (ctx *DBContext) getDatabase() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -79,15 +65,16 @@ func printToDo(t *ToDo) {
 	fmt.Printf("- [%s] (%s) %s\n", completed, t.ID, t.Text)
 }
 
-func (ctx *DBContext) Create(t *ToDo) error {
+func (ctx *DBContext) Create(t string) error {
 	id := generateId()
 	item := &ToDo{
 		ID:          id,
-		Text:        t.Text,
+		Text:        t,
 		IsCompleted: false,
 	}
 
 	if err := ctx.db.Create(item).Error; err != nil {
+		fmt.Printf("To-do %s not created\n", id)
 		return err
 	}
 
@@ -114,82 +101,35 @@ func (ctx *DBContext) Read() error {
 
 func (ctx *DBContext) Update(td *ToDo) error {
 	if err := ctx.db.Model(&td).Update("Text", &td.Text).Error; err != nil {
-		// fmt.Errorf("to do %s not found", t.ID)
+		fmt.Printf("To-do %s not updated", td.ID)
 		return err
 	}
 	fmt.Printf("To-do %s updated", td.ID)
 	return nil
 }
 
-func (ctx *DBContext) Delete(td *ToDo) error {
-	if err := ctx.db.Delete(&td).Error; err != nil {
-		// fmt.Errorf("to do %s not found", t.ID)
+func (ctx *DBContext) Delete(id string) error {
+	if err := ctx.db.Delete(&ToDo{ID: id}).Error; err != nil {
+		fmt.Printf("To-do %s not deleted", id)
 		return err
 	}
-	fmt.Printf("To-do %s deleted", td.ID)
+	fmt.Printf("To-do %s deleted", id)
 	return nil
 }
 
-// func (t *ToDo) Update() error {
-// 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
-// 		if len(td) == 0 {
-// 			fmt.Println("nothing to do!")
-// 			return []*ToDo{}, nil
-// 		}
+func (ctx *DBContext) ToggleTodo(id string) error {
+	var todo *ToDo
+	if err := ctx.db.Find(&todo).Where("id = ?", id).Error; err != nil {
+		return err
+	}
 
-// 		todo, err := t.FindItem(td)
-// 		if err != nil {
-// 			return nil, err
-// 		}
+	todo.IsCompleted = !todo.IsCompleted
 
-// 		todo.Text = t.Text
-// 		return td, nil
-// 	})
-// }
-
-// func (t *ToDo) FindItem(td []*ToDo) (*ToDo, error) {
-// 	for _, todo := range td {
-// 		if len(t.ID) >= 4 && s.HasPrefix(todo.ID, t.ID) {
-// 			return todo, nil
-// 		}
-// 	}
-
-// 	return nil, fmt.Errorf("to do %s not found", t.ID)
-// }
-
-// func (t *ToDo) ToggleTodo() error {
-// 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
-// 		if len(td) == 0 {
-// 			fmt.Println("nothing to do!")
-// 			return []*ToDo{}, nil
-// 		}
-
-// 		todo, err := t.FindItem(td)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		todo.IsCompleted = !todo.IsCompleted
-// 		return td, nil
-// 	})
-// }
-
-// func (t *ToDo) Delete() error {
-// 	return updateStore(func(td []*ToDo) ([]*ToDo, error) {
-// 		found, err := t.FindItem(td)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		for i, todo := range td {
-// 			if todo.ID == found.ID {
-// 				return slices.Delete(td, i, i+1), nil
-// 			}
-// 		}
-
-// 		return nil, fmt.Errorf("to do with id %s not found", t.ID)
-// 	})
-// }
+	if err := ctx.Update(todo); err != nil {
+		return err
+	}
+	return nil
+}
 
 func main() {
 	s := time.Now()
@@ -212,8 +152,8 @@ func main() {
 	// findFlag := flag.String("f", "", "Find a to todo")
 	updateFlag := flag.String("u", "", "Update a to do")
 	textFlag := flag.String("t", "", "Update the text of a to do")
-	// toggleCompleteFlag := flag.String("x", "", "Update completed state")
-	// deleteFlag := flag.String("d", "", "Delete to do")
+	toggleCompleteFlag := flag.String("x", "", "Update completed state")
+	deleteFlag := flag.String("d", "", "Delete to do")
 	helpFlag := flag.Bool("h", false, "Show help")
 
 	flag.Parse()
@@ -243,8 +183,7 @@ func main() {
 		}
 
 	case *createFlag != "":
-		todo.Text = *createFlag
-		err := dbCtx.Create(&todo)
+		err := dbCtx.Create(*createFlag)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
@@ -263,19 +202,17 @@ func main() {
 			os.Exit(1)
 		}
 
-	// case *toggleCompleteFlag != "":
-	// 	todo.ID = *toggleCompleteFlag
-	// 	err := todo.ToggleTodo()
-	// 	if err != nil {
-	// 		fmt.Printf("error: %v\n", err)
-	// 	}
+	case *toggleCompleteFlag != "":
+		err := dbCtx.ToggleTodo(*toggleCompleteFlag)
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
 
-	// case *deleteFlag != "":
-	// 	todo.ID = *deleteFlag
-	// 	err := todo.Delete()
-	// 	if err != nil {
-	// 		fmt.Printf("error: %v\n", err)
-	// 	}
+	case *deleteFlag != "":
+		err := dbCtx.Delete(*deleteFlag)
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
 
 	default:
 		fmt.Println("Unknown flag or no action")
