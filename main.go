@@ -6,19 +6,19 @@ import (
 	"os"
 	"time"
 
-	dbstore "ronb.co/todo-go/dbstore"
+	db "ronb.co/todo-go/store"
 )
 
 func main() {
 	s := time.Now()
-	var store dbstore.Store
+	var store db.Store
 	err := store.GetDatabase()
 	if err != nil {
 		fmt.Printf("error: %v", err)
 		os.Exit(1)
 	}
 
-	store.DB.AutoMigrate(&dbstore.ToDo{})
+	store.DB.AutoMigrate(&db.ToDo{})
 
 	defer func() {
 		duration := time.Since(s)
@@ -36,7 +36,7 @@ func main() {
 
 	flag.Parse()
 
-	todo := dbstore.ToDo{}
+	todo := db.ToDo{}
 
 	if *helpFlag {
 		flag.Usage()

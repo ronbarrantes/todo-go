@@ -1,7 +1,6 @@
-package dbstore
+package store
 
 import (
-	"crypto/rand"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +8,7 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	u "ronb.co/todo-go/utils"
 )
 
 type ToDo struct {
@@ -22,15 +22,6 @@ type ToDo struct {
 
 type Store struct {
 	DB *gorm.DB
-}
-
-func generateId() (string, error) {
-	var id [6]byte
-	_, err := rand.Read(id[:])
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", id), nil
 }
 
 func (store *Store) GetDatabase() error {
@@ -66,7 +57,7 @@ func printToDo(t *ToDo) {
 }
 
 func (store *Store) Create(t string) error {
-	id, err := generateId()
+	id, err := u.GenerateId()
 	if err != nil {
 		return err
 	}
