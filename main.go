@@ -9,8 +9,7 @@ import (
 	db "ronb.co/todo-go/store"
 )
 
-func main() {
-	s := time.Now()
+func run() (*db.Store, error) {
 	var store db.Store
 	err := store.GetDatabase()
 	if err != nil {
@@ -20,13 +19,22 @@ func main() {
 
 	store.DB.AutoMigrate(&db.ToDo{})
 
-	defer func() {
-		duration := time.Since(s)
-		fmt.Printf("-----\nThis program took %v to run\n", duration)
-	}()
+	return &store, nil
+}
 
+type flags struct {
+	create string
+	list   bool
+	update string
+	text   string
+	toggle string
+	delete string
+	help   bool
+}
+
+func parseFlags() flags {
 	createFlag := flag.String("c", "", "Create a to-do")
-	readFlag := flag.Bool("l", false, "List all to-dos")
+	listFlag := flag.Bool("l", false, "List all to-dos")
 	// findFlag := flag.String("f", "", "Find a to todo")
 	updateFlag := flag.String("u", "", "Update a to-do")
 	textFlag := flag.String("t", "", "Update the text of a to-do")
@@ -36,9 +44,33 @@ func main() {
 
 	flag.Parse()
 
+	return flags{
+		create: *createFlag,
+		list:   *listFlag,
+		update: *updateFlag,
+		text:   *textFlag,
+		toggle: *toggleCompleteFlag,
+		delete: *deleteFlag,
+		help:   *helpFlag,
+	}
+}
+
+func main() {
+	secs := time.Now()
+	defer func() {
+		duration := time.Since(secs)
+		fmt.Printf("-----\nThis program took %v to run\n", duration)
+	}()
+
+	store, err := run()
+	f := parseFlags()
+	if err != nil {
+		fmt.Printf("error, %v", err)
+	}
+
 	todo := db.ToDo{}
 
-	if *helpFlag {
+	if f.help {
 		flag.Usage()
 		os.Exit(0)
 	}
@@ -53,41 +85,41 @@ func main() {
 	}
 
 	switch {
-	case *readFlag:
+	case f.list:
 		fmt.Println("Reading ....")
 		err := store.Read()
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
 
-	case *createFlag != "":
-		err := store.Create(*createFlag)
+	case f.create != "":
+		err := store.Create(f.create)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
 
-	case *updateFlag != "":
-		if *textFlag == "" {
+	case f.update != "":
+		if f.text == "" {
 			fmt.Println("please provide the text with -t")
 			os.Exit(1)
 		}
 
-		todo.ID = *updateFlag
-		todo.Text = *textFlag
+		todo.ID = f.update
+		todo.Text = f.text
 		err := store.Update(&todo)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
 
-	case *toggleCompleteFlag != "":
-		err := store.ToggleTodo(*toggleCompleteFlag)
+	case f.toggle != "":
+		err := store.ToggleTodo(f.toggle)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
 
-	case *deleteFlag != "":
-		err := store.Delete(*deleteFlag)
+	case f.delete != "":
+		err := store.Delete(f.delete)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
